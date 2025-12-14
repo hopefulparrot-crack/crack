@@ -7,39 +7,33 @@
 </head>
 <body>
 
-<h3>관리자 댓글 관리</h3>
-<input id="key" placeholder="관리자 키">
-<button onclick="load()">불러오기</button>
+<h3>관리자 댓글 삭제</h3>
 <div id="list"></div>
 
 <script>
-const URL="https://zhebwptomqfabevvzncg.supabase.co"
-const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoZWJ3cHRvbXFmYWJldnZ6bmNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2ODE5MTgsImV4cCI6MjA4MTI1NzkxOH0.Q7UdL6AVCzb6AbsmMA847yulWISqaZwYZW9hvMai_kg"
-const sb=supabase.createClient(URL,KEY)
+const sb = supabase.createClient(
+  "https://zhebwptomqfabevvzncg.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoZWJ3cHRvbXFmYWJldnZ6bmNnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTY4MTkxOCwiZXhwIjoyMDgxMjU3OTE4fQ.8cS94TaoiwSGFbPsKNv7DDM2_sbzfvJ5rOeyRMDIWDw"
+)
 
 async function load(){
-  const adminKey=document.getElementById("key").value
-  const {data}=await sb.from("comments").select("*").order("id")
+  const { data } = await sb.from("comments").select("*").order("id")
   list.innerHTML=""
   data.forEach(c=>{
     const d=document.createElement("div")
     d.textContent=c.content
-    const del=document.createElement("button")
-    del.textContent="삭제"
-    del.onclick=()=>remove(c.id,adminKey)
-    d.appendChild(del)
+    const b=document.createElement("button")
+    b.textContent="삭제"
+    b.onclick=async()=>{
+      await sb.from("comments").delete().eq("id",c.id)
+      load()
+    }
+    d.appendChild(b)
     list.appendChild(d)
   })
 }
 
-async function remove(id,key){
-  await fetch(`${URL}/functions/v1/comment-delete`,{
-    method:"POST",
-    headers:{Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
-    body:JSON.stringify({id,key})
-  })
-  load()
-}
+load()
 </script>
 
 </body>
