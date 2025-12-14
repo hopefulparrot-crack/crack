@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>피드백</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background:#111;
+      color:#fff;
+      font-family:system-ui;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+    }
+    .box {
+      width:100%;
+      max-width:400px;
+    }
+    textarea {
+      width:100%;
+      height:120px;
+      padding:12px;
+      border-radius:8px;
+      border:none;
+      resize:none;
+    }
+    button {
+      width:100%;
+      margin-top:10px;
+      padding:12px;
+      border:none;
+      border-radius:8px;
+      background:#4f46e5;
+      color:white;
+      font-size:16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h3>익명 피드백</h3>
+  <textarea id="text" placeholder="하고 싶은 말 적어줘"></textarea>
+  <button onclick="send()">보내기</button>
+</div>
+
+<script>
+const SUPABASE_URL = "https://네프로젝트.supabase.co"
+const SUPABASE_ANON_KEY = "네_anon_key"
+
+const sb = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+)
+
+async function send() {
+  const text = document.getElementById("text").value.trim()
+  if (!text) return alert("내용 입력해")
+
+  // 1. DB 저장
+  const { error } = await sb.from("feedback").insert({ content: text })
+  if (error) {
+    alert("실패")
+    return
+  }
+
+  // 2. 디스코드 알림
+  await fetch(
+    `${SUPABASE_URL}/functions/v1/feedback-notify`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ content: text })
+    }
+  )
+
+  alert("전송 완료!")
+  document.getElementById("text").value = ""
+}
+</script>
+
+</body>
+</html>
