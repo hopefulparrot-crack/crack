@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>관리자</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<h3>관리자 댓글 관리</h3>
+<input id="key" placeholder="관리자 키">
+<button onclick="load()">불러오기</button>
+<div id="list"></div>
+
+<script>
+const URL="https://zhebwptomqfabevvzncg.supabase.co"
+const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoZWJ3cHRvbXFmYWJldnZ6bmNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2ODE5MTgsImV4cCI6MjA4MTI1NzkxOH0.Q7UdL6AVCzb6AbsmMA847yulWISqaZwYZW9hvMai_kg"
+const sb=supabase.createClient(URL,KEY)
+
+async function load(){
+  const adminKey=document.getElementById("key").value
+  const {data}=await sb.from("comments").select("*").order("id")
+  list.innerHTML=""
+  data.forEach(c=>{
+    const d=document.createElement("div")
+    d.textContent=c.content
+    const del=document.createElement("button")
+    del.textContent="삭제"
+    del.onclick=()=>remove(c.id,adminKey)
+    d.appendChild(del)
+    list.appendChild(d)
+  })
+}
+
+async function remove(id,key){
+  await fetch(`${URL}/functions/v1/comment-delete`,{
+    method:"POST",
+    headers:{Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
+    body:JSON.stringify({id,key})
+  })
+  load()
+}
+</script>
+
+</body>
+</html>
