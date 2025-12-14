@@ -2,17 +2,51 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>피드백&댓글</title>
+<title>댓글&피드백</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body{background:#111;color:#fff;font-family:system-ui;max-width:500px;margin:auto;padding:20px}
-.comment{background:#1f1f1f;padding:10px;border-radius:8px;margin-bottom:8px}
-.reply{margin-left:20px;background:#222}
-textarea{width:100%;height:70px;border-radius:8px;border:none;padding:10px}
-button{margin-top:6px;padding:6px 10px;border:none;border-radius:6px;background:#4f46e5;color:#fff}
+body{
+  background:#111;
+  color:#fff;
+  font-family:system-ui;
+  max-width:500px;
+  margin:auto;
+  padding:20px
+}
+.comment{
+  background:#1f1f1f;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:8px
+}
+.reply{
+  margin-left:20px;
+  background:#222
+}
+textarea{
+  width:100%;
+  height:70px;
+  border-radius:8px;
+  border:none;
+  padding:10px
+}
+button{
+  margin-top:6px;
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  background:#4f46e5;
+  color:#fff
+}
+.reply-box{
+  display:none;
+  margin-top:6px
+}
 </style>
 </head>
+
 <body>
 
 <h3>댓글</h3>
@@ -22,77 +56,133 @@ button{margin-top:6px;padding:6px 10px;border:none;border-radius:6px;background:
 <button onclick="send()">댓글 달기</button>
 
 <script>
-const URL = "https://zhebwptomqfabevvzncg.supabase.co"
-const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoZWJ3cHRvbXFmYWJldnZ6bmNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2ODE5MTgsImV4cCI6MjA4MTI1NzkxOH0.Q7UdL6AVCzb6AbsmMA847yulWISqaZwYZW9hvMai_kg"
-const sb = supabase.createClient(URL, KEY)
+const SUPABASE_URL = "https://네프로젝트.supabase.co"
+const SUPABASE_ANON_KEY = "네_anon_key"
+
+const sb = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+)
 
 async function load(){
-  const {data}=await sb.from("comments").select("*").order("id")
-  const map={}
-  data.forEach(c=>map[c.id]={...c,replies:[]})
-  data.forEach(c=>c.parent_id&&map[c.parent_id]?.replies.push(map[c.id]))
+  const { data } = await sb
+    .from("comments")
+    .select("*")
+    .order("id", { ascending: true })
 
-  list.innerHTML=""
-  Object.values(map).filter(c=>!c.parent_id)
-    .forEach(c=>render(c,list))
+  const list = document.getElementById("list")
+  list.innerHTML = ""
+
+  const map = {}
+  data.forEach(c => map[c.id] = { ...c, replies: [] })
+  data.forEach(c => {
+    if (c.parent_id) {
+      map[c.parent_id]?.replies.push(map[c.id])
+    }
+  })
+
+  Object.values(map)
+    .filter(c => !c.parent_id)
+    .forEach(c => render(c, list))
 }
 
-function render(c,root){
-  const d=document.createElement("div")
-  d.className="comment"
-  d.textContent=c.content
+function render(c, root){
+  const d = document.createElement("div")
+  d.className = "comment"
+  d.textContent = c.content
 
-  const btn=document.createElement("button")
-  btn.textContent="답글"
-  btn.onclick=()=>box.style.display=box.style.display?"":"block"
+  const replyBtn = document.createElement("button")
+  replyBtn.textContent = "답글"
 
-  const box=document.createElement("div")
-  box.style.display="none"
+  const box = document.createElement("div")
+  box.className = "reply-box"
 
-  const ta=document.createElement("textarea")
-  const sbt=document.createElement("button")
-  sbt.textContent="등록"
-  sbt.onclick=()=>sendReply(c.id,ta.value)
+  replyBtn.onclick = () => {
+    box.style.display = box.style.display === "none" ? "block" : "none"
+  }
 
-  box.append(ta,sbt)
-  d.append(document.createElement("br"),btn,box)
+  const ta = document.createElement("textarea")
+  ta.placeholder = "대댓글 입력"
+
+  const sendBtn = document.createElement("button")
+  sendBtn.textContent = "등록"
+  sendBtn.onclick = () => sendReply(c.id, ta.value)
+
+  box.append(ta, sendBtn)
+  d.append(document.createElement("br"), replyBtn, box)
   root.appendChild(d)
 
-  c.replies.forEach(r=>{
-    const rd=document.createElement("div")
-    rd.className="comment reply"
-    rd.textContent=r.content
+  c.replies.forEach(r => {
+    const rd = document.createElement("div")
+    rd.className = "comment reply"
+    rd.textContent = r.content
     root.appendChild(rd)
   })
 }
 
 async function send(){
-  const t=text.value.trim()
-  if(!t)return
-  const res=await fetch(`${URL}/functions/v1/comment-notify`,{
-    method:"POST",
-    headers:{Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
-    body:JSON.stringify({content:t})
+  const text = document.getElementById("text").value.trim()
+  if (!text) return alert("내용 입력해")
+
+  // 1️⃣ DB 먼저 저장
+  const { error } = await sb
+    .from("comments")
+    .insert({ content: text })
+
+  if (error) {
+    alert("등록 실패")
+    return
+  }
+
+  // 2️⃣ 알림 (실패해도 댓글은 유지됨)
+  fetch(`${SUPABASE_URL}/functions/v1/comment-notify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify({ content: text })
   })
-  if(!res.ok)return alert("등록 불가")
-  await sb.from("comments").insert({content:t})
-  text.value=""
+
+  document.getElementById("text").value = ""
   load()
 }
 
-async function sendReply(pid,t){
-  if(!t)return
-  const res=await fetch(`${URL}/functions/v1/comment-notify`,{
-    method:"POST",
-    headers:{Authorization:`Bearer ${KEY}`,"Content-Type":"application/json"},
-    body:JSON.stringify({content:t,parent_id:pid})
+async function sendReply(parentId, text){
+  text = text.trim()
+  if (!text) return
+
+  // 1️⃣ DB 저장
+  const { error } = await sb
+    .from("comments")
+    .insert({
+      content: text,
+      parent_id: parentId
+    })
+
+  if (error) {
+    alert("등록 실패")
+    return
+  }
+
+  // 2️⃣ 알림
+  fetch(`${SUPABASE_URL}/functions/v1/comment-notify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify({
+      content: text,
+      parent_id: parentId
+    })
   })
-  if(!res.ok)return alert("등록 불가")
-  await sb.from("comments").insert({content:t,parent_id:pid})
+
   load()
 }
 
 load()
 </script>
+
 </body>
 </html>
